@@ -27,19 +27,39 @@
 // if (no == 1) sets out = !out   // bitwise not
 
 CHIP ALU {
-    IN  
-        x[16], y[16],  // 16-bit inputs        
+    IN
+        x[16], y[16],  // 16-bit inputs
         zx, // zero the x input?
         nx, // negate the x input?
         zy, // zero the y input?
         ny, // negate the y input?
         f,  // compute (out = x + y) or (out = x & y)?
         no; // negate the out output?
-    OUT 
+    OUT
         out[16], // 16-bit output
         zr,      // if (out == 0) equals 1, else 0
         ng;      // if (out < 0)  equals 1, else 0
 
     PARTS:
-    //// Replace this comment with your code.
+    Mux16(a=x, b=false, sel=zx, out=x1); // if (zx == 1) sets x = 0
+    Mux16(a=y, b=false, sel=zy, out=y1); // if (zy == 1) sets y = 0
+    // if (nx == 1) sets x = !x
+    Not16(in=x1, out=notx1);
+    Mux16(a=x1, b=notx1, sel=nx, out=x2);
+    // if (ny == 1) sets y = !y
+    Not16(in=y1, out=noty1);
+    Mux16(a=y1, b=noty1, sel=ny, out=y2);
+    // if (f == 1) sets out = x + y, else sets out = x & y
+    Add16(a=x2, b=y2, out=addOut);
+    And16(a=x2, b=y2, out=andOut);
+    Mux16(a=andOut, b=addOut, sel=f, out=xy1);
+    // if (no == 1) sets out = !out
+    // if (out < 0) sets ng = 1, else 0
+    Not16(in=xy1, out=notxy1);
+    Mux16(a=xy1, b=notxy1, sel=no, out=out, out[0..7]=out0to7, out[8..15]=out8to15, out[15]=ng);
+    // if (out == 0) sets zr = 1, else 0
+    Or8Way(in=out0to7, out=out0to7or);
+    Or8Way(in=out8to15, out=out8to15or);
+    Or(a=out0to7or, b=out8to15or, out=outor);
+    Not(in=outor, out=zr);
 }
